@@ -1,0 +1,14 @@
+# Dynamic inventory: finds EC2 instances by tag instead of hard-coding IPs
+plugin: amazon.aws.aws_ec2
+regions:
+  - ap-south-1
+filters:
+  tag:ManagedBy: terraform
+  instance-state-name: running
+keyed_groups:
+  - key: tags.Environment
+    prefix: env
+  - key: tags.Role
+    prefix: role
+hostnames:
+  - private-ip-address
