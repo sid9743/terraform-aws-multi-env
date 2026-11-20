@@ -1,0 +1,82 @@
+name: Terraform
+
+on:
+  pull_request:
+    paths: ["envs/**", "modules/**"]
+  push:
+    branches: [main]
+    paths: ["envs/**", "modules/**"]
+
+permissions:
+  id-token: write      # for AWS OIDC login, no long-lived keys
+  contents: read
+  pull-requests: write
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: terraform fmt
+        run: terraform fmt -recursive -check
+      - name: terraform validate
+        run: |
+          for env in envs/dev envs/prod; do
+            terraform -chdir=$env init -backend=false -input=false
+            terraform -chdir=$env validate
+          done
+      - name: tfsec / trivy config scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: CRITICAL
+          exit-code: "0"
+
+  plan:
+    needs: checks
+    if: github.event_name == 'pull_request' && vars.AWS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [dev, prod]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ap-south-1
+      - name: terraform plan
+        run: |
+          terraform -chdir=envs/${{ matrix.env }} init -input=false
+          terraform -chdir=envs/${{ matrix.env }} plan -input=false -no-color -out=tfplan
+
+  apply:
+    needs: checks
+    if: github.event_name == 'push' && vars.AWS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        env: [dev, prod]
+    # "prod" environment has required reviewers, so prod apply waits for manual approval
+    environment: ${{ matrix.env }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ap-south-1
+      - name: terraform apply
+        run: |
+          terraform -chdir=envs/${{ matrix.env }} init -input=false
+          terraform -chdir=envs/${{ matrix.env }} apply -input=false -auto-approve
