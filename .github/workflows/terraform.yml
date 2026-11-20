@@ -2,10 +2,10 @@ name: Terraform
 
 on:
   pull_request:
-    paths: ["envs/**", "modules/**"]
+    paths: ["envs/**", "modules/**", ".github/workflows/terraform.yml"]
   push:
     branches: [main]
-    paths: ["envs/**", "modules/**"]
+    paths: ["envs/**", "modules/**", ".github/workflows/terraform.yml"]
 
 permissions:
   id-token: write      # for AWS OIDC login, no long-lived keys
