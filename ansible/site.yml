@@ -1,0 +1,8 @@
+# Baseline configuration for bastion and utility hosts.
+# Usage: ansible-playbook site.yml -l env_dev
+- name: Baseline hardening and monitoring agent
+  hosts: all
+  become: true
+  roles:
+    - common
+    - node_exporter
