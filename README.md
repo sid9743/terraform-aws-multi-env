@@ -38,7 +38,7 @@ modules/
   eks/              EKS cluster, KMS secrets encryption, node group, add-ons, IRSA OIDC provider
   rds/              PostgreSQL in private subnets, password managed in Secrets Manager
 envs/
-  dev/              small and cheap: 2 AZs, 1 NAT gateway, SPOT nodes, single-AZ DB
+  dev/              values set as variable defaults; small and cheap: 2 AZs, 1 NAT gateway, SPOT nodes, single-AZ DB
   prod/             3 AZs, NAT per AZ, on-demand nodes, Multi-AZ DB, deletion protection
 ansible/            baseline hardening and node_exporter for EC2 hosts (dynamic inventory)
 .github/workflows/  fmt, validate and config scan on every PR; plan and apply via OIDC
