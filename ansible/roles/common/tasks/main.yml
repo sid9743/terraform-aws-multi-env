@@ -1,0 +1,48 @@
+- name: Install base packages
+  ansible.builtin.package:
+    name:
+      - git
+      - jq
+      - unzip
+      - chrony
+      - amazon-cloudwatch-agent
+    state: present
+
+- name: Set timezone to Asia/Kolkata
+  community.general.timezone:
+    name: Asia/Kolkata
+
+- name: Make sure chronyd is running for accurate time
+  ansible.builtin.service:
+    name: chronyd
+    state: started
+    enabled: true
+
+- name: Disable SSH password login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PasswordAuthentication"
+    line: "PasswordAuthentication no"
+    validate: "sshd -t -f %s"
+  notify: Restart sshd
+
+- name: Disable SSH root login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PermitRootLogin"
+    line: "PermitRootLogin no"
+    validate: "sshd -t -f %s"
+  notify: Restart sshd
+
+- name: Apply kernel network hardening
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/90-hardening.conf
+    reload: true
+  loop: "{{ sysctl_settings | dict2items }}"
+  vars:
+    sysctl_settings:
+      net.ipv4.conf.all.accept_redirects: 0
+      net.ipv4.conf.all.send_redirects: 0
+      net.ipv4.tcp_syncookies: 1
